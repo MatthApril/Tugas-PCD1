@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Spatial Filtering 3x3</title>
+    <style>
+        /* CSS untuk Styling Halaman */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #1e3a5f;
+            text-align: center;
+        }
+
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 30px; /* Memberi jarak dari container atas */
+        }
+
+        .grid-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #1e3a5f;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        .grid-7x7 {
+            grid-template-columns: repeat(7, 45px);
+            grid-template-rows: repeat(7, 45px);
+        }
+
+        .grid-3x3 {
+            grid-template-columns: repeat(3, 45px);
+            grid-template-rows: repeat(3, 45px);
+        }
+
+        .grid .cell {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .grid .cell input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: 1em;
+            background-color: transparent;
+            border-radius: 6px;
+            -moz-appearance: textfield; /* Firefox */
+        }
+        
+        .grid .cell input::-webkit-outer-spin-button,
+        .grid .cell input::-webkit-inner-spin-button {
+            -webkit-appearance: none; /* Chrome, Safari, Edge, Opera */
+            margin: 0;
+        }
+        
+        .grid .cell input:focus {
+            outline: 2px solid #007bff;
+        }
+
+        .output-cell {
+            cursor: pointer;
+        }
+        
+        .output-cell:hover {
+            background-color: #e0e7ff;
+            transform: scale(1.05);
+        }
+
+        .controls, .trace-container {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .controls h3, .trace-container h3 {
+             margin-top: 0;
+             color: #1e3a5f;
+        }
+        
+        .control-group {
+             display: flex;
+             gap: 15px;
+             align-items: center;
+             margin-bottom: 15px;
+             flex-wrap: wrap;
+        }
+        
+        .control-group label {
+            font-weight: 500;
+        }
+
+        .control-group input[type="number"], .control-group select {
+            width: 70px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        .control-group select {
+            width: auto;
+            flex-grow: 1;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            font-weight: bold;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        #calculation-trace {
+            margin-top: 20px;
+        }
+        
+        #calculation-steps {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            background-color: #eef1f5;
+            border-radius: 5px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+        
+        .trace-grid-wrapper {
+             display: flex;
+             justify-content: center;
+             margin-bottom: 15px;
+        }
+        
+        /* Kelas untuk highlight */
+        .highlight-input {
+            background-color: #ffc107 !important; /* Kuning */
+            color: black;
+            border: 2px solid #e0a800;
+        }
+        
+        .highlight-output {
+            background-color: #28a745 !important; /* Hijau */
+            color: white;
+            border: 2px solid #1e7e34;
+        }
+        
+        .highlight-trace {
+             border-color: #007bff;
+             background-color: #cfe2ff;
+        }
+        
+        .median-highlight {
+            font-weight: bold;
+            color: #dc3545;
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Kalkulator Spatial Filtering 3x3</h1>
+
+    <div class="controls">
+        <h3>Kontrol</h3>
+        <div class="control-group">
+            <label for="min-random">Isi Acak Dari:</label>
+            <input type="number" id="min-random" value="0">
+            <label for="max-random">Sampai:</label>
+            <input type="number" id="max-random" value="10">
+            <button id="randomize-btn">Isi Angka Acak</button>
+        </div>
+        <div class="control-group">
+             <label for="filter-select">Pilih Jenis Filter:</label>
+             <select id="filter-select">
+                <option value="average">Average Filtering (Mean)</option>
+                <option value="high-pass">High-pass Filtering</option>
+                <option value="high-boost">High-boost Filtering</option>
+                <option value="median">Median Filtering</option>
+                <option value="prewitt">Prewitt Edge Detection</option>
+                <option value="sobel">Sobel Edge Detection</option>
+             </select>
+        </div>
+        <div class="control-group" id="high-boost-controls" style="display: none;">
+            <label for="high-boost-a">Faktor A:</label>
+            <input type="number" id="high-boost-a" value="1.2" step="0.1">
+        </div>
+        <button id="calculate-btn">Hitung Filtering</button>
+    </div>
+
+    <div class="main-container">
+        <div class="grid-container">
+            <h2>Input (7x7)</h2>
+            <div id="input-grid" class="grid grid-7x7"></div>
+        </div>
+        
+        <div class="grid-container">
+            <h2>Hasil (7x7)</h2>
+            <div id="output-grid" class="grid grid-7x7"></div>
+        </div>
+    </div>
+    
+    <div class="trace-container" id="trace-wrapper" style="display: none;">
+         <h3>Jejak Perhitungan</h3>
+         <p>Klik salah satu sel pada matriks <strong>Hasil</strong> untuk melihat detail perhitungannya di sini.</p>
+         <div id="calculation-trace">
+            <h4>Jendela Input yang Digunakan:</h4>
+            <div class="trace-grid-wrapper">
+                <div id="trace-grid" class="grid grid-3x3"></div>
+            </div>
+            <h4>Detail Kalkulasi:</h4>
+            <div id="calculation-steps">Pilih sebuah sel hasil untuk memulai...</div>
+         </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputGrid = document.getElementById('input-grid');
+            const outputGrid = document.getElementById('output-grid');
+            const traceGrid = document.getElementById('trace-grid');
+            const calculationSteps = document.getElementById('calculation-steps');
+            const traceWrapper = document.getElementById('trace-wrapper');
+            const filterSelect = document.getElementById('filter-select');
+            const highBoostControls = document.getElementById('high-boost-controls');
+
+            const gridSize = 7;
+            const filterSize = 3;
+            let inputMatrixData = Array(gridSize).fill(0).map(() => Array(gridSize).fill(0));
+            let currentFilterType = 'average';
+
+            const kernels = {
+                average: [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                'high-pass': [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]],
+                prewittGx: [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]],
+                prewittGy: [[-1, -1, -1], [0, 0, 0], [1, 1, 1]],
+                sobelGx: [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+                sobelGy: [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+            };
+
+            const createGrid = (container, rows, cols, isInput = false) => {
+                container.innerHTML = '';
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        if (isInput) {
+                            const input = document.createElement('input');
+                            input.type = 'number';
+                            input.dataset.row = i;
+                            input.dataset.col = j;
+                            input.value = 0;
+                            cell.appendChild(input);
+                        } else if (container.id === 'output-grid') {
+                            cell.classList.add('output-cell');
+                        }
+                        container.appendChild(cell);
+                    }
+                }
+            };
+
+            createGrid(inputGrid, gridSize, gridSize, true);
+            createGrid(outputGrid, gridSize, gridSize);
+            createGrid(traceGrid, filterSize, filterSize);
+
+            const readDataFromGrid = () => {
+                const matrix = Array(gridSize).fill(0).map(() => Array(gridSize).fill(0));
+                const cells = inputGrid.querySelectorAll('input');
+                cells.forEach(input => {
+                    const row = parseInt(input.dataset.row, 10);
+                    const col = parseInt(input.dataset.col, 10);
+                    matrix[row][col] = parseInt(input.value, 10) || 0;
+                });
+                return matrix;
+            };
+
+            document.getElementById('randomize-btn').addEventListener('click', () => {
+                const min = parseInt(document.getElementById('min-random').value, 10);
+                const max = parseInt(document.getElementById('max-random').value, 10);
+                if (isNaN(min) || isNaN(max) || min > max) {
+                    alert("Rentang nilai acak tidak valid.");
+                    return;
+                }
+                inputGrid.querySelectorAll('input').forEach(input => {
+                    input.value = Math.floor(Math.random() * (max - min + 1)) + min;
+                });
+            });
+
+            filterSelect.addEventListener('change', (e) => {
+                highBoostControls.style.display = (e.target.value === 'high-boost') ? 'flex' : 'none';
+            });
+            
+            const getNeighborhood = (matrix, r, c) => {
+                 const neighborhood = [];
+                 const center = Math.floor(filterSize / 2);
+                 for (let i = 0; i < filterSize; i++) {
+                    for (let j = 0; j < filterSize; j++) {
+                        const row = (r - center + i + gridSize) % gridSize;
+                        const col = (c - center + j + gridSize) % gridSize;
+                        neighborhood.push(matrix[row][col]);
+                    }
+                }
+                return neighborhood;
+            };
+
+            const applyConvolution = (matrix, kernel, divisor = 1) => {
+                let sum = 0;
+                const flatKernel = kernel.flat();
+                for(let i=0; i < matrix.length; i++) {
+                    sum += matrix[i] * flatKernel[i];
+                }
+                return sum / divisor;
+            };
+            
+            document.getElementById('calculate-btn').addEventListener('click', () => {
+                inputMatrixData = readDataFromGrid();
+                currentFilterType = filterSelect.value;
+                const outputMatrix = Array(gridSize).fill(0).map(() => Array(gridSize).fill(0));
+
+                for (let i = 0; i < gridSize; i++) {
+                    for (let j = 0; j < gridSize; j++) {
+                        const neighborhood = getNeighborhood(inputMatrixData, i, j);
+                        let result = 0;
+                        switch (currentFilterType) {
+                            case 'average':
+                                result = applyConvolution(neighborhood, kernels.average, 9);
+                                break;
+                            case 'high-pass':
+                                result = applyConvolution(neighborhood, kernels['high-pass']);
+                                break;
+                            case 'high-boost':
+                                const A = parseFloat(document.getElementById('high-boost-a').value) || 1.0;
+                                const centerValue = A - 1 + 8;
+                                const boostKernel = [[-1,-1,-1],[-1, centerValue, -1],[-1,-1,-1]];
+                                result = applyConvolution(neighborhood, boostKernel);
+                                break;
+                            case 'median':
+                                const sorted = [...neighborhood].sort((a, b) => a - b);
+                                result = sorted[Math.floor(sorted.length / 2)];
+                                break;
+                            case 'prewitt':
+                                const gxPrewitt = applyConvolution(neighborhood, kernels.prewittGx);
+                                const gyPrewitt = applyConvolution(neighborhood, kernels.prewittGy);
+                                result = Math.sqrt(gxPrewitt**2 + gyPrewitt**2);
+                                break;
+                            case 'sobel':
+                                const gxSobel = applyConvolution(neighborhood, kernels.sobelGx);
+                                const gySobel = applyConvolution(neighborhood, kernels.sobelGy);
+                                result = Math.sqrt(gxSobel**2 + gySobel**2);
+                                break;
+                        }
+                        outputMatrix[i][j] = result;
+                    }
+                }
+                
+                outputGrid.querySelectorAll('.cell').forEach(cell => {
+                    const row = parseInt(cell.dataset.row, 10);
+                    const col = parseInt(cell.dataset.col, 10);
+                    cell.textContent = outputMatrix[row][col].toFixed(2);
+                });
+                
+                traceWrapper.style.display = 'block';
+                calculationSteps.innerHTML = "Pilih sebuah sel hasil untuk melihat detail...";
+            });
+            
+            outputGrid.addEventListener('click', (e) => {
+                const targetCell = e.target.closest('.output-cell');
+                if (targetCell) {
+                    const row = parseInt(targetCell.dataset.row, 10);
+                    const col = parseInt(targetCell.dataset.col, 10);
+                    showCalculationTrace(row, col);
+                }
+            });
+
+            function showCalculationTrace(row, col) {
+                document.querySelectorAll('.highlight-input, .highlight-output, .highlight-trace').forEach(el => el.classList.remove('highlight-input', 'highlight-output', 'highlight-trace'));
+                
+                const neighborhood = getNeighborhood(inputMatrixData, row, col);
+                const flatNeighborhood = neighborhood;
+                
+                // Highlight input grid dan isi trace grid
+                const center = Math.floor(filterSize / 2);
+                for (let i = 0; i < filterSize; i++) {
+                    for (let j = 0; j < filterSize; j++) {
+                         const inputRow = (row - center + i + gridSize) % gridSize;
+                         const inputCol = (col - center + j + gridSize) % gridSize;
+                         inputGrid.querySelector(`input[data-row='${inputRow}'][data-col='${inputCol}']`).parentElement.classList.add('highlight-input');
+                         const traceCellIndex = i * filterSize + j;
+                         traceGrid.querySelectorAll('.cell')[traceCellIndex].textContent = inputMatrixData[inputRow][inputCol];
+                         traceGrid.querySelectorAll('.cell')[traceCellIndex].classList.add('highlight-trace');
+                    }
+                }
+                
+                let traceHtml = '';
+                switch(currentFilterType) {
+                    case 'average':
+                    case 'high-pass':
+                    case 'high-boost':
+                        let kernel, divisor = 1;
+                        if(currentFilterType === 'average') { kernel = kernels.average; divisor = 9; }
+                        if(currentFilterType === 'high-pass') { kernel = kernels['high-pass']; }
+                        if(currentFilterType === 'high-boost') { 
+                            const A = parseFloat(document.getElementById('high-boost-a').value) || 1.0;
+                            kernel = [[-1,-1,-1],[-1, A-1+8, -1],[-1,-1,-1]];
+                        }
+                        const flatKernel = kernel.flat();
+                        let sum = 0;
+                        let stepString = flatNeighborhood.map((val, i) => {
+                            sum += val * flatKernel[i];
+                            return `(${val} &times; ${flatKernel[i]})`
+                        }).join(' + ');
+                        traceHtml = `( ${stepString} )`;
+                        if (divisor !== 1) {
+                            traceHtml += ` &times; 1/${divisor} = ${sum} &times; 1/${divisor} = <strong>${(sum/divisor).toFixed(2)}</strong>`;
+                        } else {
+                            traceHtml += ` = <strong>${sum.toFixed(2)}</strong>`;
+                        }
+                        break;
+                    case 'median':
+                        const sorted = [...flatNeighborhood].sort((a,b) => a-b);
+                        const median = sorted[Math.floor(sorted.length/2)];
+                        traceHtml = `Nilai Jendela: [${flatNeighborhood.join(', ')}]<br>`;
+                        traceHtml += `Nilai Terurut: [${sorted.map(v => v === median ? `<span class="median-highlight">${v}</span>` : v).join(', ')}]<br>`;
+                        traceHtml += `Median (nilai tengah) = <strong>${median}</strong>`;
+                        break;
+                    case 'prewitt':
+                    case 'sobel':
+                        const kGx = (currentFilterType === 'prewitt') ? kernels.prewittGx : kernels.sobelGx;
+                        const kGy = (currentFilterType === 'prewitt') ? kernels.prewittGy : kernels.sobelGy;
+                        const gx = applyConvolution(flatNeighborhood, kGx);
+                        const gy = applyConvolution(flatNeighborhood, kGy);
+                        
+                        traceHtml = `<strong>Perhitungan Gx:</strong><br>`;
+                        traceHtml += flatNeighborhood.map((v,i) => `(${v}&times;${kGx.flat()[i]})`).join(' + ') + ` = ${gx.toFixed(2)}<br><br>`;
+                        traceHtml += `<strong>Perhitungan Gy:</strong><br>`;
+                        traceHtml += flatNeighborhood.map((v,i) => `(${v}&times;${kGy.flat()[i]})`).join(' + ') + ` = ${gy.toFixed(2)}<br><br>`;
+                        traceHtml += `<strong>Hasil Akhir (Magnitude):</strong><br>`;
+                        traceHtml += `&radic;(Gx&sup2; + Gy&sup2;) = &radic;(${gx.toFixed(2)}&sup2; + ${gy.toFixed(2)}&sup2;) = <strong>${(Math.sqrt(gx**2 + gy**2)).toFixed(2)}</strong>`;
+                        break;
+                }
+                
+                calculationSteps.innerHTML = traceHtml;
+                outputGrid.querySelector(`.cell[data-row='${row}'][data-col='${col}']`).classList.add('highlight-output');
+            }
+        });
+    </script>
+
+</body>
+</html>
+
